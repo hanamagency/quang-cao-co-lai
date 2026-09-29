@@ -1,4 +1,6 @@
 /* Bố cục: 1 cột đọc như cuốn sổ tính lãi; màn rộng thì thẻ giá dính bên phải. Màu HÀ NAM: xanh cổ vịt và vàng. */
+/* Thuộc tính hidden luôn thắng các lớp có display (sửa lỗi 29/09: khối chờ hiện chồng khối thành công) */
+[hidden] { display: none !important; }
 :root {
   --bg: #f3f6f5;
   --surface: #ffffff;
