@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Xác nhận đặt trước</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="style.css">
+<script src="config.js"></script>
+<script src="pixel.js"></script>
+</head>
+<body>
+<div class="preview-bar" id="previewBar" hidden>Bản xem trước: đây là trang cảm ơn mẫu, chưa có giao dịch thật và không gửi sự kiện mua hàng cho Meta.</div>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <span class="seal" aria-hidden="true">HN</span>
+      <span>HÀ NAM Agency<small>Đồng hành tăng trưởng</small></span>
+    </a>
+  </div>
+</header>
+
+<main class="page">
+  <p class="eyebrow">Quảng Cáo Có Lãi 2026 · Đặt trước</p>
+
+  <!-- Đã thanh toán -->
+  <section class="status ok" id="viewPaid" hidden>
+    <h1>Cảm ơn bạn đã đặt trước</h1>
+    <p>Thanh toán đã được xác nhận. Email xác nhận kèm Sheet tính lãi bản đầy đủ đang được gửi tới địa chỉ bạn đã điền.</p>
+    <dl class="kv">
+      <dt>Mã đơn</dt><dd class="num" id="paidCode">-</dd>
+      <dt>Số tiền</dt><dd class="num" id="paidAmount">200.000đ</dd>
+      <dt>Người đặt</dt><dd id="paidCount">-</dd>
+    </dl>
+  </section>
+
+  <!-- Đang chờ -->
+  <section class="status wait" id="viewWait" hidden>
+    <h1>Đang chờ ngân hàng xác nhận</h1>
+    <p id="waitText">Trang tự kiểm tra lại mỗi 5 giây. Bạn không cần quét mã lần nữa.</p>
+    <dl class="kv"><dt>Mã đơn</dt><dd class="num" id="waitCode">-</dd></dl>
+  </section>
+
+  <!-- Đã hủy hoặc lỗi -->
+  <section class="status no" id="viewCancel" hidden>
+    <h1 id="cancelTitle">Chưa thanh toán</h1>
+    <p id="cancelText">Giao dịch đã hủy nên chưa có khoản nào bị trừ. Bạn có thể đặt lại bất cứ lúc nào trước 23:59 ngày 18/10/2026.</p>
+    <p><a class="btn gold" href="index.html#dat-truoc" style="width:auto;display:inline-block">Quay lại trang đặt trước</a></p>
+  </section>
+
+  <section id="nextSteps" hidden>
+    <h2>Việc nên làm bây giờ</h2>
+    <ol class="plain">
+      <li>Mở email xác nhận. Không thấy trong hộp thư chính thì xem mục thư rác hoặc Quảng cáo, rồi đánh dấu là không phải thư rác để các phần sau không bị lạc.</li>
+      <li>Mở Sheet tính lãi, nhập số của 1 sản phẩm ở tab Nhập liệu, xem ROAS hòa vốn ở tab Kết quả.</li>
+      <li>Gửi 1 câu hỏi về tài khoản quảng cáo của shop bằng cách trả lời email xác nhận. Câu hỏi phù hợp được đưa vào giáo trình thành case, đã che tên.</li>
+    </ol>
+    <p class="fine">Mốc tiếp theo: 23:59 ngày 18/10/2026 chốt danh sách. Đủ 20 người thì bạn nhận email lịch gửi từng phần; chưa đủ thì tiền được hoàn trước hết ngày 21/10/2026.</p>
+  </section>
+
+  <p class="fine">Cần hỗ trợ: <span id="helpMail">hanamagency@gmail.com</span> · Zalo <span class="num">0986219360</span> · <a href="chinh-sach.html">Chính sách</a></p>
+</main>
+
+<script>
+(function () {
+  var C = window.QCCL_CONFIG || {};
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (n) { return Number(n).toLocaleString("vi-VN") + "đ"; };
+  if (C.CONTACT_EMAIL) $("helpMail").textContent = C.CONTACT_EMAIL;
+  $("paidAmount").textContent = fmt(C.PRICE || 200000);
+
+  var q = new URLSearchParams(location.search);
+  var orderCode = (q.get("orderCode") || "").replace(/\D/g, "");
+  var cancelled = q.get("cancel") === "true" || (q.get("status") || "").toUpperCase() === "CANCELLED";
+  var DEMO = !C.ENDPOINT || location.hash === "#demo";
+
+  function show(id) { ["viewPaid", "viewWait", "viewCancel"].forEach(function (v) { $(v).hidden = v !== id; }); $("nextSteps").hidden = id !== "viewPaid"; }
+
+  function countText(n) {
+    if (typeof n !== "number") return "-";
+    var min = C.MIN_ORDERS || 20;
+    return n >= min ? n + " người, đã đủ " + min : n + " trên " + min + " người";
+  }
+
+  // Chỉ gửi Purchase 1 lần cho mỗi mã đơn, và chỉ khi hệ thống xác nhận đã thanh toán
+  function firePurchase(code) {
+    var key = "qccl_purchase_" + code, sent = false;
+    try { sent = localStorage.getItem(key) === "1"; } catch (e) {}
+    if (sent) return;
+    var params = { content_name: C.PRODUCT_NAME, content_type: "product", value: C.PRICE, currency: C.CURRENCY, num_items: 1 };
+    if (C.THU_NGHIEM === true) params.don_thu = 1;
+    var ok = window.qcclTrack("Purchase", params, "QCCL-" + code);
+    if (ok) { try { localStorage.setItem(key, "1"); } catch (e) {} }
+  }
+
+  if (DEMO) {
+    $("previewBar").hidden = false;
+    $("paidCode").textContent = "123456 (mẫu)";
+    $("paidCount").textContent = "12 trên 20 người (mẫu)";
+    show("viewPaid");
+    return;
+  }
+  if (C.THU_NGHIEM === true) {
+    $("previewBar").textContent = "Đang thử nghiệm: đây là đơn thử, không thu tiền. Sự kiện Purchase vẫn gửi cho Meta để kiểm Pixel, kèm đánh dấu đơn thử.";
+    $("previewBar").hidden = false;
+  }
+  if (!orderCode) {
+    $("cancelTitle").textContent = "Không tìm thấy mã đơn";
+    $("cancelText").textContent = "Đường link thiếu mã đơn. Nếu bạn đã quét mã và bị trừ tiền, trả lời email xác nhận hoặc liên hệ theo địa chỉ bên dưới, kèm ảnh chụp giao dịch.";
+    show("viewCancel");
+    return;
+  }
+  if (cancelled) { show("viewCancel"); return; }
+
+  var tries = 0;
+  function check() {
+    tries++;
+    fetch(C.ENDPOINT + "?action=status&orderCode=" + encodeURIComponent(orderCode))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var st = d && d.ok ? String(d.status || "").toUpperCase() : "";
+        if (st === "PAID") {
+          $("paidCode").textContent = orderCode;
+          $("paidCount").textContent = countText(d.paidCount);
+          show("viewPaid");
+          firePurchase(orderCode);
+        } else if (st === "CANCELLED" || st === "EXPIRED") {
+          show("viewCancel");
+        } else {
+          $("waitCode").textContent = orderCode;
+          show("viewWait");
+          if (tries < 24) setTimeout(check, 5000);
+          else $("waitText").textContent = "Chưa nhận được xác nhận sau 2 phút. Nếu tài khoản đã bị trừ tiền, trả lời email xác nhận hoặc liên hệ theo địa chỉ bên dưới, kèm mã đơn.";
+        }
+      })
+      .catch(function () {
+        $("waitCode").textContent = orderCode;
+        show("viewWait");
+        if (tries < 24) setTimeout(check, 5000);
+      });
+  }
+  check();
+})();
+</script>
+</body>
+</html>
