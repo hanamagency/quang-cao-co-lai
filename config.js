@@ -5,7 +5,7 @@
    Ngày mở bán thật: đổi THU_NGHIEM thành false. */
 window.QCCL_CONFIG = {
   PIXEL_ID: "939933335396008",        // tập dữ liệu "Hà Nam Agency" trong Trình quản lý sự kiện
-  ENDPOINT: "",                       // dán link Web App của Google Apps Script (kết thúc bằng /exec)
+  ENDPOINT: "https://script.google.com/macros/s/AKfycbyxnk3uwVWU3zyCzVctmLHs_DLoW0MEmIrhu6gOGYYN7LyEr6JMkiSGtUCHNj5OHVD-YA/exec", // Web App Apps Script, bản 1 ngày 29/09/2026
   THU_NGHIEM: true,
 
   SITE_URL: "https://hanamagency.github.io/quang-cao-co-lai/",
